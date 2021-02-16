@@ -1,0 +1,36 @@
+<?php
+
+/**
+ * @file
+ * Contains jsonapi_layout_builder.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function jsonapi_layout_builder_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the jsonapi_layout_builder module.
+    case 'help.page.jsonapi_layout_builder':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('My Awesome Module') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_entity_load().
+ */
+function jsonapi_layout_builder_entity_load(array $entities, $entity_type_id) {
+  /** @var \Drupal\jsonapi_layout_builder\LayoutBuilderLoaderManager $lb_loader */
+  $lb_loader = \Drupal::service('jsonapi_layout_builder.loader_manager');
+  if (!$lb_loader->isJsonapiRequest()) {
+    return;
+  }
+  $lb_loader->loadMultiple($entities, $entity_type_id);
+}

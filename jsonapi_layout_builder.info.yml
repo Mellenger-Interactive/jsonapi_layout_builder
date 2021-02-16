@@ -1,0 +1,8 @@
+name: 'JSON:API Layout Builder'
+type: module
+description: 'JSON:API customizations for a better layout builder decoupled'
+core_version_requirement: ^8.8 || ^9
+package: 'Web services'
+dependencies:
+  - drupal:jsonapi
+  - drupal:layout_builder
