@@ -59,6 +59,9 @@ class LayoutBuilderLoaderManager {
   }
 
   public function isJsonapiRequest() {
+    if ($this->route === NULL) {
+      $this->route = \Drupal::routeMatch()->getRouteObject();
+    }
     if (!$this->route instanceof \Symfony\Component\Routing\Route || !$this->route->hasDefault('_is_jsonapi')) {
       return FALSE;
     }
@@ -68,20 +71,17 @@ class LayoutBuilderLoaderManager {
   public function loadMultiple(array $entities, $entity_type_id) {
     $view_mode = $this->route->getDefault('view_mode');
     foreach ($entities as $entity) {
-      if (!$entity instanceof FieldableEntityInterface || !$entity->hasField(OverridesSectionStorage::FIELD_NAME) || !$entity->get(OverridesSectionStorage::FIELD_NAME)
-          ->isEmpty()) {
+      if (!$entity instanceof FieldableEntityInterface) {
         continue;
       }
-
-      switch ($view_mode) {
-        case 'full':
-        case 'default':
-          $this->loadDefaultViewMode($entity);
-          break;
-        default:
-          $this->loadViewMode($entity, $view_mode);
-          break;
+      if (!$entity->hasField(OverridesSectionStorage::FIELD_NAME)) {
+        continue;
       }
+      if (!$entity->get(OverridesSectionStorage::FIELD_NAME)->isEmpty()) {
+        $this->loadDefaultViewMode($entity);
+        continue;
+      }
+      $this->loadViewMode($entity, $view_mode);
     }
   }
 
@@ -125,9 +125,8 @@ class LayoutBuilderLoaderManager {
 
   protected function setSections(ContentEntityBase $entity, $type, $contexts) {
     if ($section_storage = $this->sectionStorageManager->load($type, $contexts)) {
-      $sections = $this->layoutTempstoreRepository->get($section_storage);
       $entity->get(OverridesSectionStorage::FIELD_NAME)
-        ->setValue($sections->getSections());
+        ->setValue($section_storage->getSections());
     }
   }
 

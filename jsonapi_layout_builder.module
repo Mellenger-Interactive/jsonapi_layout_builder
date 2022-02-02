@@ -34,3 +34,26 @@ function jsonapi_layout_builder_entity_load(array $entities, $entity_type_id) {
   }
   $lb_loader->loadMultiple($entities, $entity_type_id);
 }
+
+/**
+ * Implements hook_layout_alter().
+ */
+function jsonapi_layout_builder_layout_alter(&$definitions) {
+  foreach ($definitions as $id => $def) {
+    /** @var \Drupal\Core\Layout\LayoutDefinition $def */
+    $class = $def->getClass();
+    $def->setClass(\Drupal\jsonapi_layout_builder\Layout\LayoutSettings::class);
+    $def->set('base_class', $class);
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function jsonapi_layout_builder_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'layout_alter') {
+    $group = $implementations['jsonapi_layout_builder'];
+    unset($implementations['jsonapi_layout_builder']);
+    $implementations['jsonapi_layout_builder'] = $group;
+  }
+}
