@@ -74,7 +74,7 @@ function jsonapi_layout_builder_entity_presave(EntityInterface $entity) {
       }
     }
   }
-  $entity->set('layout_builder__components', array_values($components));
+  $entity->set(IncludeResolver::FIELD_NAME, array_values($components));
 }
 
 /**
@@ -125,6 +125,7 @@ function __jsonapi_layout_builder_add_components_field($entity_type_id, $bundle,
         'field_name' => $field_name,
         'type' => 'entity_reference',
         'locked' => TRUE,
+        'cardinality' => \Drupal\Core\Field\FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED,
         'settings' => [
           'target_type' => 'block_content',
         ],
@@ -184,12 +185,7 @@ function __jsonapi_layout_builder_remove_components_field($entity_type_id, $bund
  * Implements hook_module_implements_alter().
  */
 function jsonapi_layout_builder_module_implements_alter(&$implementations, $hook) {
-  if ($hook === 'layout_alter') {
-    $group = $implementations['jsonapi_layout_builder'];
-    unset($implementations['jsonapi_layout_builder']);
-    $implementations['jsonapi_layout_builder'] = $group;
-  }
-  if ($hook === 'entity_presave') {
+  if ($hook === 'layout_alter' || $hook === 'entity_presave') {
     $group = $implementations['jsonapi_layout_builder'];
     unset($implementations['jsonapi_layout_builder']);
     $implementations['jsonapi_layout_builder'] = $group;
