@@ -1,5 +1,5 @@
 {
-    "name": "jsonapi_layout_builder",
+    "name": "drupal/jsonapi_layout_builder",
     "type": "drupal-module",
     "description": "JSON:API customizations for a better layout builder decoupled",
     "keywords": [
@@ -8,6 +8,6 @@
     "minimum-stability": "dev",
     "support": {
         "issues": "https://www.drupal.org/project/issues/jsonapi_layout_builder",
-        "source": "http://cgit.drupalcode.org/jsonapi_layout_builder",
-    },
+        "source": "http://cgit.drupalcode.org/jsonapi_layout_builder"
+    }
 }
