@@ -4,7 +4,6 @@ namespace Drupal\jsonapi_layout_builder;
 
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\DependencyInjection\ServiceProviderBase;
-use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * Replace the resource type repository for our own configurable version.
@@ -15,6 +14,10 @@ class JsonapiLayoutBuilderServiceProvider extends ServiceProviderBase {
    * {@inheritdoc}
    */
   public function alter(ContainerBuilder $container) {
+    if ($container->hasDefinition('jsonapi.include_resolver')) {
+      $definition = $container->getDefinition('jsonapi.include_resolver');
+      $definition->setClass(IncludeResolver::class);
+    }
     // Enable normalizers in the "src-impostor-normalizers" directory to be
     // within the \Drupal\jsonapi\Normalizer namespace in order to circumvent
     // the encapsulation enforced by
