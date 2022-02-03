@@ -6,4 +6,3 @@ package: 'Web services'
 dependencies:
   - drupal:jsonapi
   - drupal:layout_builder
-  - drupal:entity_reference
