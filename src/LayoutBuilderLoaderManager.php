@@ -62,7 +62,7 @@ class LayoutBuilderLoaderManager {
     if ($this->route === NULL) {
       $this->route = \Drupal::routeMatch()->getRouteObject();
     }
-    if (!$this->route instanceof \Symfony\Component\Routing\Route || !$this->route->hasDefault('_is_jsonapi')) {
+    if (!$this->route instanceof Route || !$this->route->hasDefault('_is_jsonapi')) {
       return FALSE;
     }
     return TRUE;

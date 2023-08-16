@@ -5,6 +5,9 @@
  * Contains jsonapi_layout_builder.module.
  */
 
++use Drupal\jsonapi_layout_builder\Layout\LayoutSettings;
++use Drupal\block_content\Entity\BlockContent;
++use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -48,7 +51,7 @@ function jsonapi_layout_builder_layout_alter(&$definitions) {
   foreach ($definitions as $id => $def) {
     /** @var \Drupal\Core\Layout\LayoutDefinition $def */
     $class = $def->getClass();
-    $def->setClass(\Drupal\jsonapi_layout_builder\Layout\LayoutSettings::class);
+    $def->setClass(LayoutSettings::class);
     $def->set('base_class', $class);
   }
 }
@@ -67,7 +70,7 @@ function jsonapi_layout_builder_entity_presave(EntityInterface $entity) {
       if (strpos($config['id'], 'inline_block:') === 0) {
         $block = \Drupal::service('entity.repository')
           ->loadEntityByUuid('block_content', $config['uuid']);
-        if (!$block instanceof \Drupal\block_content\Entity\BlockContent) {
+        if (!$block instanceof BlockContent) {
           continue;
         }
         $components[$uuid] = $block->id();
@@ -125,7 +128,7 @@ function __jsonapi_layout_builder_add_components_field($entity_type_id, $bundle,
         'field_name' => $field_name,
         'type' => 'entity_reference',
         'locked' => TRUE,
-        'cardinality' => \Drupal\Core\Field\FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED,
+        'cardinality' => FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED,
         'settings' => [
           'target_type' => 'block_content',
         ],
