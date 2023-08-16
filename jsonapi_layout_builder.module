@@ -5,7 +5,16 @@
  * Contains jsonapi_layout_builder.module.
  */
 
++use Drupal\jsonapi_layout_builder\Layout\LayoutSettings;
++use Drupal\block_content\Entity\BlockContent;
++use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\Entity\ContentEntityBase;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\jsonapi_layout_builder\IncludeResolver;
+use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
 
 /**
  * Implements hook_help().
@@ -33,4 +42,155 @@ function jsonapi_layout_builder_entity_load(array $entities, $entity_type_id) {
     return;
   }
   $lb_loader->loadMultiple($entities, $entity_type_id);
+}
+
+/**
+ * Implements hook_layout_alter().
+ */
+function jsonapi_layout_builder_layout_alter(&$definitions) {
+  foreach ($definitions as $id => $def) {
+    /** @var \Drupal\Core\Layout\LayoutDefinition $def */
+    $class = $def->getClass();
+    $def->setClass(LayoutSettings::class);
+    $def->set('base_class', $class);
+  }
+}
+
+/**
+ * Implements hook_entity_presave().
+ */
+function jsonapi_layout_builder_entity_presave(EntityInterface $entity) {
+  if (!$entity instanceof ContentEntityBase || !$entity->hasField(OverridesSectionStorage::FIELD_NAME) || !$entity->hasField(IncludeResolver::FIELD_NAME)) {
+    return;
+  }
+  $components = [];
+  foreach ($entity->get('layout_builder__layout') as $item) {
+    foreach ($item->section->getComponents() as $uuid => $component) {
+      $config = $component->get('configuration');
+      if (strpos($config['id'], 'inline_block:') === 0) {
+        $block = \Drupal::service('entity.repository')
+          ->loadEntityByUuid('block_content', $config['uuid']);
+        if (!$block instanceof BlockContent) {
+          continue;
+        }
+        $components[$uuid] = $block->id();
+      }
+    }
+  }
+  $entity->set(IncludeResolver::FIELD_NAME, array_values($components));
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ */
+function jsonapi_layout_builder_entity_view_display_presave(EntityInterface $entity) {
+  $x = &drupal_static(__FUNCTION__, FALSE);
+  $new_value = $entity->isOverridable();
+  if ($x === FALSE) {
+    $x = TRUE;
+    $entity_type_id = $entity->getTargetEntityTypeId();
+    $bundle = $entity->getTargetBundle();
+
+    $type_key = \Drupal::entityTypeManager()
+      ->getDefinition($entity_type_id)
+      ->getKey('bundle');
+    $e = \Drupal::entityTypeManager()
+      ->getStorage($entity_type_id)
+      ->create([$type_key => $bundle]);
+    $field_exists = $e->hasField(IncludeResolver::FIELD_NAME);
+
+    if ($new_value && !$field_exists) {
+      __jsonapi_layout_builder_add_components_field($entity_type_id, $bundle, IncludeResolver::FIELD_NAME);
+    }
+    elseif($field_exists) {
+      __jsonapi_layout_builder_remove_components_field($entity_type_id, $bundle, IncludeResolver::FIELD_NAME, $entity);
+    }
+  }
+}
+
+/**
+ * Adds a layout components field to a given bundle.
+ *
+ * @param string $entity_type_id
+ *   The entity type ID.
+ * @param string $bundle
+ *   The bundle.
+ * @param string $field_name
+ *   The name for the layout section field.
+ */
+function __jsonapi_layout_builder_add_components_field($entity_type_id, $bundle, $field_name) {
+  $field = FieldConfig::loadByName($entity_type_id, $bundle, $field_name);
+  if (!$field) {
+    $field_storage = FieldStorageConfig::loadByName($entity_type_id, $field_name);
+    if (!$field_storage) {
+      $field_storage = FieldStorageConfig::create([
+        'entity_type' => $entity_type_id,
+        'field_name' => $field_name,
+        'type' => 'entity_reference',
+        'locked' => TRUE,
+        'cardinality' => FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED,
+        'settings' => [
+          'target_type' => 'block_content',
+        ],
+      ]);
+      $field_storage->setTranslatable(FALSE);
+      $field_storage->save();
+    }
+
+    $field = FieldConfig::create([
+      'field_storage' => $field_storage,
+      'bundle' => $bundle,
+      'label' => t('Layout components'),
+      'settings' => [
+        'handler' => 'views',
+        'handler_settings' => [
+          'views' => [
+            'view_name' => $field_name,
+            'display_name' => 'entity_reference_1',
+            'arguments' => [],
+          ],
+        ],
+      ],
+    ]);
+    $field->setTranslatable(FALSE);
+    $field->save();
+  }
+}
+
+/**
+ * Removes a layout components field if it is no longer needed.
+ *
+ * Because the field is shared across all view modes, the field will only be
+ * removed if no other view modes are using it.
+ *
+ * @param string $entity_type_id
+ *   The entity type ID.
+ * @param string $bundle
+ *   The bundle.
+ * @param string $field_name
+ *   The name for the layout section field.
+ */
+function __jsonapi_layout_builder_remove_components_field($entity_type_id, $bundle, $field_name, EntityInterface $entity) {
+  $query = \Drupal::entityTypeManager()
+    ->getStorage($entity->getEntityTypeId())
+    ->getQuery()
+    ->condition('targetEntityType', $entity->getTargetEntityTypeId())
+    ->condition('bundle', $entity->getTargetBundle())
+    ->condition('mode', $entity->getMode(), '<>')
+    ->condition('third_party_settings.layout_builder.allow_custom', TRUE);
+  $enabled = (bool) $query->count()->execute();
+  if (!$enabled && $field = FieldConfig::loadByName($entity_type_id, $bundle, $field_name)) {
+    $field->delete();
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function jsonapi_layout_builder_module_implements_alter(&$implementations, $hook) {
+  if ($hook === 'layout_alter' || $hook === 'entity_presave') {
+    $group = $implementations['jsonapi_layout_builder'];
+    unset($implementations['jsonapi_layout_builder']);
+    $implementations['jsonapi_layout_builder'] = $group;
+  }
 }

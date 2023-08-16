@@ -1,0 +1,11 @@
+services:
+  serializer.normalizer.field.jsonapi_layout_builder:
+    class: Drupal\jsonapi\Normalizer\ImpostorFrom\jsonapi_layout_builder\FieldNormalizerImpostor
+    decorates: serializer.normalizer.field.jsonapi
+    arguments:
+      - '@serializer.normalizer.field.jsonapi_layout_builder.inner'
+      - '@current_route_match'
+
+  jsonapi_layout_builder.loader_manager:
+    class: Drupal\jsonapi_layout_builder\LayoutBuilderLoaderManager
+    arguments: ['@current_route_match', '@plugin.manager.layout_builder.section_storage', '@layout_builder.tempstore_repository', '@request_stack']
